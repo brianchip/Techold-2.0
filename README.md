@@ -1,13 +1,13 @@
-# ERP Project Management Module - Techold Engineering
+# Techold-2.0 - ERP Project Management Module
 
 ## Project Overview
 Integrated Project Management Module within the ERP system to manage all stages of engineering, procurement, and construction projects. The module seamlessly connects with other ERP modules (CRM, Finance, Procurement, HR, SHEQ, Field Operations) and stores all project-related data in a structured, query-optimized backend database.
 
 ## Architecture
-- **Backend**: Laravel 10.x (PHP 8.1+)
-- **Database**: MySQL 8.0+ / PostgreSQL 14+
+- **Backend**: Laravel 12.x (PHP 8.1+)
+- **Database**: SQLite (development) / MySQL 8.0+ / PostgreSQL 14+ (production)
 - **Frontend**: React 18+ with TypeScript
-- **Authentication**: JWT with Role-Based Access Control
+- **Authentication**: Laravel Sanctum with Role-Based Access Control
 - **File Storage**: AWS S3 / Azure Blob Storage
 - **Real-time Updates**: WebSocket / API Polling
 
@@ -42,13 +42,21 @@ Integrated Project Management Module within the ERP system to manage all stages 
 1. Clone the repository
 2. Install dependencies: `composer install` (backend), `npm install` (frontend)
 3. Configure environment variables
-4. Run database migrations
-5. Start development servers
+4. Run database migrations: `php artisan migrate`
+5. Start development servers: `php artisan serve` (backend), `npm start` (frontend)
 
 ## Development Phases
-1. **Phase 1**: Project structure, database design, basic APIs
-2. **Phase 2**: Core functionality, authentication, file management
+1. **Phase 1**: ✅ Project structure, database design, basic APIs
+2. **Phase 2**: ✅ Core functionality, authentication, file management 
 3. **Phase 3**: Integration with other ERP modules, testing, deployment
+
+## Current Status
+- ✅ Backend Laravel application with SQLite database
+- ✅ Complete database migrations for all core tables
+- ✅ RESTful API endpoints with authentication
+- ✅ React frontend structure with TypeScript
+- ✅ Material-UI components and routing
+- 🚧 Frontend optimization and bug fixes in progress
 
 ## Contributing
 Follow the established coding standards and ensure all changes are tested before submission.
