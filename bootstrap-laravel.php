@@ -9,6 +9,8 @@ echo "Starting Laravel bootstrap...\n";
 // Check if we're in the right directory
 if (!file_exists('artisan')) {
     echo "ERROR: Not in Laravel root directory\n";
+    echo "Current directory: " . getcwd() . "\n";
+    echo "Files in current directory: " . implode(', ', glob('*')) . "\n";
     exit(1);
 }
 
@@ -24,8 +26,27 @@ if (!file_exists('.env')) {
         echo "Creating .env from .env.example...\n";
         copy('.env.example', '.env');
     } else {
-        echo "WARNING: No .env.example found. You'll need to create .env manually.\n";
+        echo "WARNING: No .env.example found. Creating minimal .env...\n";
+        $minimalEnv = "APP_NAME=TecholdERP\n";
+        $minimalEnv .= "APP_ENV=production\n";
+        $minimalEnv .= "APP_KEY=\n";
+        $minimalEnv .= "APP_DEBUG=false\n";
+        $minimalEnv .= "APP_URL=" . (getenv('APP_URL') ?: 'http://localhost') . "\n";
+        $minimalEnv .= "DB_CONNECTION=sqlite\n";
+        $minimalEnv .= "DB_DATABASE=" . getcwd() . "/database/database.sqlite\n";
+        file_put_contents('.env', $minimalEnv);
+        echo "✓ Created minimal .env file\n";
     }
+}
+
+// Ensure SQLite database file exists
+if (!file_exists('database/database.sqlite')) {
+    echo "Creating SQLite database file...\n";
+    if (!is_dir('database')) {
+        mkdir('database', 0755, true);
+    }
+    touch('database/database.sqlite');
+    echo "✓ SQLite database file created\n";
 }
 
 // Test Laravel bootstrap
@@ -36,6 +57,7 @@ try {
     echo "✓ Laravel bootstrap successful\n";
 } catch (Exception $e) {
     echo "ERROR: Laravel bootstrap failed: " . $e->getMessage() . "\n";
+    echo "Stack trace: " . $e->getTraceAsString() . "\n";
     exit(1);
 }
 
@@ -43,15 +65,15 @@ try {
 echo "Running Laravel setup commands...\n";
 
 $commands = [
-    'php artisan key:generate --force',
-    'php artisan config:cache',
-    'php artisan route:cache',
-    'php artisan view:cache',
-    'php artisan migrate --force'
+    'php artisan key:generate --force' => 'Generate application key',
+    'php artisan config:clear' => 'Clear config cache',
+    'php artisan config:cache' => 'Cache configuration',
+    'php artisan migrate --force' => 'Run database migrations'
 ];
 
-foreach ($commands as $command) {
-    echo "Running: $command\n";
+foreach ($commands as $command => $description) {
+    echo "Running: $description...\n";
+    echo "Command: $command\n";
     $output = [];
     $return_code = 0;
     exec("$command 2>&1", $output, $return_code);
@@ -61,9 +83,15 @@ foreach ($commands as $command) {
     } else {
         echo "✗ Failed with code $return_code\n";
         echo "Output: " . implode("\n", $output) . "\n";
-        // Don't exit on failure, continue with other commands
+        
+        // For key generation, this is critical
+        if (str_contains($command, 'key:generate')) {
+            echo "CRITICAL: App key generation failed. This will cause 500 errors.\n";
+        }
     }
+    echo "---\n";
 }
 
 echo "Laravel bootstrap completed!\n";
+echo "If you see any errors above, please fix them before using the application.\n";
 ?>
