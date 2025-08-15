@@ -33,7 +33,5 @@
       "value": "pgsql"
     }
   },
-  "scripts": {
-    "postdeploy": "php artisan migrate --force"
-  }
+  "scripts": {}
 }
