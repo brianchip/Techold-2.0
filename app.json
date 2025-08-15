@@ -1,0 +1,39 @@
+{
+  "name": "Techold ERP Project Management",
+  "description": "Laravel-based ERP Project Management Module",
+  "image": "heroku/php",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "heroku/php"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "addons": [
+    "heroku-postgresql:essential-0"
+  ],
+  "env": {
+    "APP_ENV": {
+      "required": true
+    },
+    "APP_KEY": {
+      "generator": "secret"
+    },
+    "APP_DEBUG": {
+      "value": "false"
+    },
+    "APP_URL": {
+      "required": true
+    },
+    "DB_CONNECTION": {
+      "value": "pgsql"
+    }
+  },
+  "scripts": {
+    "postdeploy": "php artisan migrate --force"
+  }
+}

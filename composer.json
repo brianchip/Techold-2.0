@@ -41,6 +41,11 @@
         }
     },
     "scripts": {
+        "post-install-cmd": [
+            "@php artisan key:generate --ansi --force",
+            "@php artisan config:cache",
+            "@php artisan route:cache"
+        ],
         "post-autoload-dump": [
             "@php artisan config:clear",
             "@php artisan clear-compiled",
