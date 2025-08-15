@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: techold-erp
+    env: php
+    plan: free
+    buildCommand: composer install --no-dev --optimize-autoloader
+    startCommand: php -S 0.0.0.0:$PORT -t public
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: techold-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: techold-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: techold-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: techold-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: techold-db
+          property: password
+
+databases:
+  - name: techold-db
+    plan: free
