@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -140,13 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard and Reporting Routes
     Route::prefix('dashboard')->group(function () {
-        Route::get('/overview', function () {
-            // Dashboard overview endpoint
-            return response()->json([
-                'success' => true,
-                'message' => 'Dashboard overview endpoint'
-            ]);
-        });
+        Route::get('/overview', [DashboardController::class, 'api']);
         
         Route::get('/reports', function () {
             // Reports endpoint
