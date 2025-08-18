@@ -54,9 +54,9 @@ class DashboardController extends Controller
         ->groupBy('status')
         ->get();
 
-        // Get monthly project creation trend
+        // Get monthly project creation trend (SQLite compatible)
         $monthly_data = Project::selectRaw('
-            DATE_FORMAT(created_at, "%Y-%m") as month,
+            strftime("%Y-%m", created_at) as month,
             COUNT(*) as count
         ')
         ->where('created_at', '>=', Carbon::now()->subMonths(12))
