@@ -18,17 +18,43 @@ class Project extends Model
         'project_code',
         'project_name',
         'project_type',
+        'costing_type',
         'client_id',
         'start_date',
         'end_date',
         'status',
         'project_manager_id',
+        'prime_mover_id',
         'description',
         'total_budget',
         'actual_cost',
         'progress_percent',
         'location',
-        'metadata'
+        'metadata',
+        // Approval workflow
+        'engineering_manager_approved',
+        'engineering_manager_approved_at',
+        'engineering_manager_id',
+        'finance_manager_approved',
+        'finance_manager_approved_at',
+        'finance_manager_id',
+        'md_approved',
+        'md_approved_at',
+        'md_id',
+        // SAP integration
+        'sap_project_code',
+        'procurement_budget',
+        'actual_procurement_cost',
+        // Variance tracking
+        'budget_variance',
+        'budget_variance_percent',
+        // Project closeout
+        'is_closed_out',
+        'closed_out_at',
+        'closeout_notes',
+        // Emergency procurement
+        'emergency_procurement',
+        'emergency_justification'
     ];
 
     protected $casts = [
@@ -37,7 +63,23 @@ class Project extends Model
         'total_budget' => 'decimal:2',
         'actual_cost' => 'decimal:2',
         'progress_percent' => 'integer',
-        'metadata' => 'array'
+        'metadata' => 'array',
+        // Approval workflow casts
+        'engineering_manager_approved' => 'boolean',
+        'engineering_manager_approved_at' => 'datetime',
+        'finance_manager_approved' => 'boolean',
+        'finance_manager_approved_at' => 'datetime',
+        'md_approved' => 'boolean',
+        'md_approved_at' => 'datetime',
+        // Financial casts
+        'procurement_budget' => 'decimal:2',
+        'actual_procurement_cost' => 'decimal:2',
+        'budget_variance' => 'decimal:2',
+        'budget_variance_percent' => 'decimal:2',
+        // Closeout casts
+        'is_closed_out' => 'boolean',
+        'closed_out_at' => 'datetime',
+        'emergency_procurement' => 'boolean'
     ];
 
     protected $dates = [
@@ -64,9 +106,9 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
-    public function resources(): HasMany
+    public function resources()
     {
-        return $this->hasMany(Resource::class);
+        return $this->hasManyThrough(Resource::class, Task::class);
     }
 
     public function budgetLines(): HasMany
@@ -82,6 +124,73 @@ class Project extends Model
     public function risks(): HasMany
     {
         return $this->hasMany(Risk::class);
+    }
+
+    // New costing workflow relationships
+    public function primeMover(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'prime_mover_id');
+    }
+
+    public function engineeringManager(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'engineering_manager_id');
+    }
+
+    public function financeManager(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'finance_manager_id');
+    }
+
+    public function managingDirector(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'md_id');
+    }
+
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(ProjectQuote::class);
+    }
+
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(ProjectApproval::class);
+    }
+
+    // New comprehensive module relationships
+    public function boqSections(): HasMany
+    {
+        return $this->hasMany(BOQSection::class);
+    }
+
+    public function boqItems(): HasMany
+    {
+        return $this->hasMany(BOQItem::class);
+    }
+
+    public function milestones(): HasMany
+    {
+        return $this->hasMany(ProjectMilestone::class);
+    }
+
+    public function checklists(): HasMany
+    {
+        return $this->hasMany(ProjectChecklist::class);
+    }
+
+    public function surveys(): HasMany
+    {
+        return $this->hasMany(ProjectSurvey::class);
+    }
+
+    public function boqVersions(): HasMany
+    {
+        return $this->hasMany(BOQVersion::class);
+    }
+
+    public function boqApprovals(): HasMany
+    {
+        return $this->hasMany(BOQApproval::class);
     }
 
     // Accessors
@@ -173,6 +282,86 @@ class Project extends Model
     {
         $actualCost = $this->budgetLines()->sum('actual_amount');
         $this->update(['actual_cost' => $actualCost]);
+    }
+
+    // New costing workflow methods
+    public function isFullyApproved(): bool
+    {
+        // Check if all required approvals are in place based on costing type and amount
+        $requiresMD = $this->requiresMDApproval();
+        
+        if ($requiresMD) {
+            return $this->engineering_manager_approved && 
+                   $this->finance_manager_approved && 
+                   $this->md_approved;
+        }
+        
+        return $this->engineering_manager_approved && $this->finance_manager_approved;
+    }
+
+    public function requiresMDApproval(): bool
+    {
+        // MD approval required for amounts above $10,000 or complex services
+        return $this->total_budget > 10000 || 
+               ($this->costing_type === 'Service Sales' && $this->isComplexService());
+    }
+
+    public function isComplexService(): bool
+    {
+        // Define complex service criteria (can be customized)
+        $complexKeywords = ['EPC', 'Installation', 'Engineering'];
+        return in_array($this->project_type, $complexKeywords);
+    }
+
+    public function getMinimumQuotesRequired(): int
+    {
+        return $this->emergency_procurement ? 1 : 3;
+    }
+
+    public function hasMinimumQuotes(): bool
+    {
+        $validQuotes = $this->quotes()->valid()->count();
+        return $validQuotes >= $this->getMinimumQuotesRequired();
+    }
+
+    public function getSelectedQuote(): ?ProjectQuote
+    {
+        return $this->quotes()->selected()->first();
+    }
+
+    public function calculateVariance(): void
+    {
+        $variance = $this->actual_cost - $this->total_budget;
+        $variancePercent = $this->total_budget > 0 ? ($variance / $this->total_budget) * 100 : 0;
+        
+        $this->update([
+            'budget_variance' => $variance,
+            'budget_variance_percent' => round($variancePercent, 2)
+        ]);
+    }
+
+    public function hasSignificantVariance(): bool
+    {
+        return abs($this->budget_variance_percent) > 10; // 10% threshold
+    }
+
+    public function canCloseOut(): bool
+    {
+        return $this->status === 'Completed' && 
+               $this->isFullyApproved() && 
+               !$this->is_closed_out;
+    }
+
+    public function submitForApproval(string $approvalType, int $approverId, string $approverRole, ?array $data = null): ProjectApproval
+    {
+        return $this->approvals()->create([
+            'approval_type' => $approvalType,
+            'approver_role' => $approverRole,
+            'approver_id' => $approverId,
+            'status' => 'Pending',
+            'submitted_at' => now(),
+            'approval_data' => $data
+        ]);
     }
 
     public function createProjectFolderStructure(): void

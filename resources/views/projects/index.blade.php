@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Projects - Donezo Project Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -48,45 +49,60 @@
             <main class="flex-1 overflow-y-auto p-6">
                 <!-- Filters and Search -->
                 <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <form method="GET" action="{{ route('projects.index') }}" id="filterForm">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                         <div class="flex items-center space-x-4">
                             <div class="relative">
-                                <input type="text" placeholder="Search projects..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-64">
+                                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search projects..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-64">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                             </div>
-                            <select class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                <option>All Status</option>
-                                <option>Planning</option>
-                                <option>In Progress</option>
-                                <option>Completed</option>
-                                <option>On Hold</option>
-                                <option>Cancelled</option>
+                                <select name="status" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="">All Status</option>
+                                    <option value="Planned" {{ request('status') === 'Planned' ? 'selected' : '' }}>Planned</option>
+                                    <option value="In Progress" {{ request('status') === 'In Progress' ? 'selected' : '' }}>In Progress</option>
+                                    <option value="Completed" {{ request('status') === 'Completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="On Hold" {{ request('status') === 'On Hold' ? 'selected' : '' }}>On Hold</option>
+                                    <option value="Cancelled" {{ request('status') === 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
-                            <select class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                <option>All Clients</option>
+                                <select name="client_id" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="">All Clients</option>
                                 @if(isset($clients))
                                     @foreach($clients as $client)
-                                        <option value="{{ $client->id }}">{{ $client->company_name }}</option>
+                                            <option value="{{ $client->id }}" {{ request('client_id') == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
                                     @endforeach
                                 @endif
                             </select>
+                                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                    <i class="fas fa-search mr-1"></i> Filter
+                                </button>
+                                @if(request()->hasAny(['search', 'status', 'client_id']))
+                                    <a href="{{ route('projects.index') }}" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+                                        <i class="fas fa-times mr-1"></i> Clear
+                                    </a>
+                                @endif
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button class="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors">
-                                <i class="fas fa-th-large"></i>
+                                <select name="sort_by" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="created_at" {{ request('sort_by') === 'created_at' ? 'selected' : '' }}>Sort by Date</option>
+                                    <option value="project_name" {{ request('sort_by') === 'project_name' ? 'selected' : '' }}>Sort by Name</option>
+                                    <option value="status" {{ request('sort_by') === 'status' ? 'selected' : '' }}>Sort by Status</option>
+                                    <option value="progress_percent" {{ request('sort_by') === 'progress_percent' ? 'selected' : '' }}>Sort by Progress</option>
+                                    <option value="end_date" {{ request('sort_by') === 'end_date' ? 'selected' : '' }}>Sort by Due Date</option>
+                                </select>
+                                <button type="button" onclick="toggleSortOrder()" class="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors" title="Toggle Sort Order">
+                                    <i class="fas fa-sort-amount-{{ request('sort_order', 'desc') === 'desc' ? 'down' : 'up' }}"></i>
                             </button>
-                            <button class="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors">
-                                <i class="fas fa-list"></i>
-                            </button>
+                                <input type="hidden" name="sort_order" id="sortOrder" value="{{ request('sort_order', 'desc') }}">
+                            </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
 
                 <!-- Projects Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @if(isset($projects) && $projects->count() > 0)
                         @foreach($projects as $project)
-                        <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer" onclick="window.location.href='{{ route('projects.show', $project) }}'">
                             <div class="p-6">
                                 <!-- Project Header -->
                                 <div class="flex items-start justify-between mb-4">
@@ -147,13 +163,13 @@
                                         <span class="text-xs text-gray-500">{{ rand(2, 6) }} members</span>
                                     </div>
                                     <div class="flex items-center space-x-2">
-                                        <button class="text-gray-400 hover:text-blue-600 transition-colors">
+                                        <a href="{{ route('projects.show', $project) }}" onclick="event.stopPropagation()" class="text-gray-400 hover:text-blue-600 transition-colors">
                                             <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="text-gray-400 hover:text-green-600 transition-colors">
+                                        </a>
+                                        <a href="{{ route('projects.edit', $project) }}" onclick="event.stopPropagation()" class="text-gray-400 hover:text-green-600 transition-colors">
                                             <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="text-gray-400 hover:text-red-600 transition-colors">
+                                        </a>
+                                        <button onclick="event.stopPropagation(); deleteProject({{ $project->id }})" class="text-gray-400 hover:text-red-600 transition-colors">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -182,9 +198,26 @@
                 <!-- Pagination -->
                 @if(isset($projects) && $projects->hasPages())
                 <div class="mt-8 flex justify-center">
+                    <div class="bg-white rounded-lg shadow-sm p-4">
                     {{ $projects->links() }}
+                    </div>
                 </div>
                 @endif
+
+                <!-- Results Info -->
+                <div class="mt-4 text-center text-sm text-gray-500">
+                    @if($projects->total() > 0)
+                        Showing {{ $projects->firstItem() }} to {{ $projects->lastItem() }} of {{ $projects->total() }} projects
+                        @if(request()->hasAny(['search', 'status', 'client_id']))
+                            (filtered results)
+                        @endif
+                    @else
+                        No projects found
+                        @if(request()->hasAny(['search', 'status', 'client_id']))
+                            matching your filters
+                        @endif
+                    @endif
+                </div>
             </main>
         </div>
     </div>
@@ -203,8 +236,27 @@
                             <input type="text" name="project_name" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
-                            <select name="client_id" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Project Type *</label>
+                            <select name="project_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="">Select Type</option>
+                                <option value="Engineering">Engineering</option>
+                                <option value="Procurement">Procurement</option>
+                                <option value="Installation">Installation</option>
+                                <option value="EPC">EPC</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Costing Type *</label>
+                            <select name="costing_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="Tender/Proposal">Tender/Proposal</option>
+                                <option value="Merchandise">Merchandise</option>
+                                <option value="Service Sales">Service Sales</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                            <select name="client_id" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                                 <option value="">Select Client</option>
                                 @if(isset($clients))
                                     @foreach($clients as $client)
@@ -218,17 +270,28 @@
                             <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                            <input type="date" name="start_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                            <input type="date" name="start_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                            <input type="date" name="end_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                            <input type="date" name="end_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Project Manager *</label>
+                            <select name="project_manager_id" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="">Select Manager</option>
+                                @if(isset($employees))
+                                    @foreach($employees as $employee)
+                                        <option value="{{ $employee->id }}">{{ $employee->full_name }} - {{ $employee->position }}</option>
+                                    @endforeach
+                                @endif
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                             <select name="status" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                <option value="Planning">Planning</option>
+                                <option value="Planned">Planned</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="On Hold">On Hold</option>
                                 <option value="Completed">Completed</option>
@@ -301,6 +364,61 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error creating project. Please try again.');
+            }
+        });
+
+        // Delete project function
+        function deleteProject(projectId) {
+            if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+                fetch(`/api/projects/${projectId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error deleting project. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting project. Please try again.');
+                });
+            }
+        }
+
+        // Toggle sort order
+        function toggleSortOrder() {
+            const sortOrderInput = document.getElementById('sortOrder');
+            const currentOrder = sortOrderInput.value;
+            sortOrderInput.value = currentOrder === 'desc' ? 'asc' : 'desc';
+            document.getElementById('filterForm').submit();
+        }
+
+        // Auto-submit form when sort option changes
+        document.querySelector('select[name="sort_by"]').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        // Auto-submit form when filters change
+        document.querySelector('select[name="status"]').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        document.querySelector('select[name="client_id"]').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        // Submit form on Enter key in search input
+        document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
             }
         });
     </script>

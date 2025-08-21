@@ -14,36 +14,25 @@ class Equipment extends Model
     protected $fillable = [
         'name',
         'equipment_code',
-        'type',
+        'category',
         'model',
         'serial_number',
         'hourly_rate',
-        'is_available',
-        'location',
+        'status',
         'purchase_date',
         'warranty_expiry',
-        'maintenance_schedule',
-        'last_maintenance',
-        'next_maintenance',
-        'status',
-        'notes'
+        'description'
     ];
 
     protected $casts = [
         'hourly_rate' => 'decimal:2',
-        'is_available' => 'boolean',
         'purchase_date' => 'date',
-        'warranty_expiry' => 'date',
-        'last_maintenance' => 'date',
-        'next_maintenance' => 'date',
-        'maintenance_schedule' => 'array'
+        'warranty_expiry' => 'date'
     ];
 
     protected $dates = [
         'purchase_date',
         'warranty_expiry',
-        'last_maintenance',
-        'next_maintenance',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -136,7 +125,7 @@ class Equipment extends Model
 
     public function getIsOperationalAttribute(): bool
     {
-        return $this->is_available && $this->status === 'operational';
+        return $this->status === 'operational';
     }
 
     public function getIsUnderMaintenanceAttribute(): bool
@@ -152,13 +141,12 @@ class Equipment extends Model
     // Scopes
     public function scopeAvailable($query)
     {
-        return $query->where('is_available', true)
-                    ->where('status', 'operational');
+        return $query->where('status', 'operational');
     }
 
-    public function scopeByType($query, $type)
+    public function scopeByCategory($query, $category)
     {
-        return $query->where('type', $type);
+        return $query->where('category', $category);
     }
 
     public function scopeByStatus($query, $status)

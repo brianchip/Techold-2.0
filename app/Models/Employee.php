@@ -20,26 +20,19 @@ class Employee extends Model
         'employee_code',
         'position',
         'department',
+        'phone',
         'hourly_rate',
-        'is_active',
-        'hire_date',
-        'termination_date',
+        'status',
         'manager_id',
-        'skills',
-        'notes'
+        'skills'
     ];
 
     protected $casts = [
         'hourly_rate' => 'decimal:2',
-        'is_active' => 'boolean',
-        'hire_date' => 'date',
-        'termination_date' => 'date',
         'skills' => 'array'
     ];
 
     protected $dates = [
-        'hire_date',
-        'termination_date',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -126,13 +119,13 @@ class Employee extends Model
 
     public function getIsAvailableAttribute(): bool
     {
-        return $this->is_active && !$this->termination_date;
+        return $this->status === 'active';
     }
 
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('status', 'active');
     }
 
     public function scopeByDepartment($query, $department)
@@ -147,8 +140,7 @@ class Employee extends Model
 
     public function scopeAvailable($query)
     {
-        return $query->where('is_active', true)
-                    ->whereNull('termination_date');
+        return $query->where('status', 'active');
     }
 
     public function scopeBySkill($query, $skill)

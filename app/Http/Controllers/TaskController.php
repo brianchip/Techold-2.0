@@ -43,16 +43,14 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'priority' => 'required|in:Low,Medium,High',
             'status' => 'required|in:Not Started,In Progress,On Hold,Completed,Cancelled',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'assignee_name' => 'nullable|string|max:255',
-            'estimated_hours' => 'nullable|numeric|min:0',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'estimated_hours' => 'nullable|integer|min:0',
         ]);
 
-        // Generate task code
-        $project = Project::find($validated['project_id']);
-        $taskCount = Task::where('project_id', $validated['project_id'])->count() + 1;
-        $validated['task_code'] = $project->project_code . '-T' . str_pad($taskCount, 3, '0', STR_PAD_LEFT);
+        // Convert priority string to integer
+        $priorityMap = ['High' => 1, 'Medium' => 2, 'Low' => 3];
+        $validated['priority'] = $priorityMap[$validated['priority']];
 
         $task = Task::create($validated);
 
@@ -60,7 +58,7 @@ class TaskController extends Controller
             return response()->json($task->load('project'), 201);
         }
 
-        return redirect()->route('tasks.index')
+        return redirect()->route('projects.show', $validated['project_id'])
             ->with('success', 'Task created successfully.');
     }
 
@@ -84,12 +82,15 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'priority' => 'required|in:Low,Medium,High',
             'status' => 'required|in:Not Started,In Progress,On Hold,Completed,Cancelled',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'assignee_name' => 'nullable|string|max:255',
-            'estimated_hours' => 'nullable|numeric|min:0',
-            'progress_percent' => 'nullable|numeric|min:0|max:100',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'estimated_hours' => 'nullable|integer|min:0',
+            'progress_percent' => 'nullable|integer|min:0|max:100',
         ]);
+
+        // Convert priority string to integer
+        $priorityMap = ['High' => 1, 'Medium' => 2, 'Low' => 3];
+        $validated['priority'] = $priorityMap[$validated['priority']];
 
         $task->update($validated);
 
